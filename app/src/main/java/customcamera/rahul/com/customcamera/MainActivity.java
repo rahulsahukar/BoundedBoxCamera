@@ -37,31 +37,30 @@ import java.io.IOException;
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     boolean previewing = false;
-    private MySurfaceView mySurfaceView;
+    private MySurfaceView mySurfaceView = null;
     private SurfaceHolder sh;
     private Camera c;
     private Button click;
-    private Button stop;
     private RelativeLayout boundary;
     private RelativeLayout rl;
     private FrameLayout frameLayout;
-    int[] boundaryLoc;
-    int boundaryWidth;
-    int boundaryHeight;
-    boolean landscape;
+    private int[] boundaryLoc;
+    private int boundaryWidth;
+    private int boundaryHeight;
     private int previewHeight;
     private int previewWidth;
+    private int[] cameraResolution;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        cameraResolution = new int[2];
         boundaryLoc = new int[2];
         getWindow().setFormat(PixelFormat.UNKNOWN);
         frameLayout = (FrameLayout) findViewById(R.id.rootframe);
         click = (Button) findViewById(R.id.click);
-        stop = (Button) findViewById(R.id.stop);
         boundary = (RelativeLayout) findViewById(R.id.boundary);
         rl = (RelativeLayout) findViewById(R.id.rel);
 
@@ -91,10 +90,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     public void onGlobalLayout() {
                         DisplayMetrics dm = new DisplayMetrics();
                         MainActivity.this.getWindowManager().getDefaultDisplay().getMetrics(dm);
-                        int topOffset = dm.heightPixels - frameLayout.getMeasuredHeight();
+                        //int topOffset = dm.heightPixels - frameLayout.getMeasuredHeight();
 
                         boundary.getLocationInWindow(boundaryLoc);
-                        boundaryLoc[1] -= topOffset;
+                        //boundaryLoc[1] -= topOffset;
 
                         previewHeight = frameLayout.getMeasuredHeight();
                         previewWidth = frameLayout.getMeasuredWidth();
@@ -102,14 +101,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                         boundaryWidth = boundary.getWidth();
                         boundaryHeight = boundary.getHeight();
 
-                        boundary.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                        //boundary.getViewTreeObserver().removeOnGlobalLayoutListener(this);
 
-                        mySurfaceView = new MySurfaceView(getApplicationContext(), boundaryLoc[0], boundaryLoc[1], boundaryWidth, boundaryHeight);
+                        if(mySurfaceView==null) {
+                            mySurfaceView = new MySurfaceView(getApplicationContext(), boundaryLoc[0], boundaryLoc[1], boundaryWidth, boundaryHeight);
 
-                        ScrollView.LayoutParams lp = new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-                        mySurfaceView.setLayoutParams(lp);
-                        frameLayout.addView(mySurfaceView, 1);
-                        rl.bringToFront();
+                            ScrollView.LayoutParams lp = new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                            mySurfaceView.setLayoutParams(lp);
+                            frameLayout.addView(mySurfaceView, 1);
+                            rl.bringToFront();
+                        }
 
                         sh = mySurfaceView.getHolder();
                         sh.addCallback(MainActivity.this);
@@ -120,7 +121,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private byte[] getCroppedPic(byte[] data) {
         Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
         Log.i("asdad", "" + bmp.getHeight() + " " + bmp.getWidth());
-        Bitmap croppedImg = Bitmap.createBitmap(bmp, boundaryLoc[0], boundaryLoc[1], boundaryWidth, boundaryHeight);
+
+        cameraResolution[0] = bmp.getWidth();
+        cameraResolution[1] = bmp.getHeight();
+
+        boundary.getLocationInWindow(boundaryLoc);
+
+        float aspectX = (float) boundary.getMeasuredWidth()/previewWidth;
+        float aspectY = (float) boundary.getMeasuredHeight()/previewHeight;
+
+        Bitmap croppedImg = Bitmap.createBitmap(bmp, (int) (boundaryLoc[0] * aspectX), (int) (boundaryLoc[1] * aspectY), (int) (cameraResolution[0] * aspectX), (int) (cameraResolution[1] * aspectY));
+
+        //Bitmap croppedImg = Bitmap.createBitmap(bmp, 0,0,bmp.getWidth(),bmp.getHeight());
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         croppedImg.compress(Bitmap.CompressFormat.PNG, 100, stream);
@@ -151,33 +163,49 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        c = Camera.open();
+        try {
+            c = Camera.open();
+        }
+        catch (RuntimeException e){
+            if(c!=null){
+                c.release();
+                c = Camera.open();
+            }
+        }
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
         Camera.Parameters parameters = c.getParameters();
-        if (this.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
-            parameters.set("orientation", "portrait");
+
+        final Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+/*        if (display.getRotation() == Surface.ROTATION_90) {
             c.setDisplayOrientation(90);
             parameters.setRotation(90);
-            landscape = true;
-            int temp = boundaryHeight;
-            boundaryHeight = boundaryWidth;
-            boundaryWidth = temp;
-
-            temp = previewHeight;
-            previewHeight = previewWidth;
-            previewWidth = temp;
-
-        } else {
             parameters.set("orientation", "landscape");
-            c.setDisplayOrientation(0);
-            parameters.setRotation(0);
-            landscape = false;
-        }
+            parameters.set("rotation", 90);
+            //c.setParameters(parameters);
+        } else if (display.getRotation() == Surface.ROTATION_270) {
+            c.setDisplayOrientation(270);
+            parameters.setRotation(270);
+            parameters.set("orientation", "landscape");
+            parameters.set("rotation", 270);
+            //c.setParameters(parameters);
+        }*/
 
+        DisplayMetrics dm = new DisplayMetrics();
+        MainActivity.this.getWindowManager().getDefaultDisplay().getMetrics(dm);
+        //int topOffset = dm.heightPixels - frameLayout.getMeasuredHeight();
+
+        boundary.getLocationInWindow(boundaryLoc);
+        //boundaryLoc[1] -= topOffset;
+
+        previewHeight = frameLayout.getHeight();
+        previewWidth = frameLayout.getWidth();
+
+        boundaryWidth = boundary.getMeasuredWidth();
+        boundaryHeight = boundary.getMeasuredHeight();
 
         if (previewing) {
             c.stopPreview();
@@ -194,6 +222,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             }
         }
     }
+
+//    @Override
+//    public void onConfigurationChanged(Configuration newConfig) {
+//        super.onConfigurationChanged(newConfig);
+//        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+//        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+//        }
+//    }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {

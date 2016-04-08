@@ -2,20 +2,12 @@ package customcamera.rahul.com.customcamera;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.hardware.Camera;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.RelativeLayout;
 
-import java.io.IOException;
-
-/**
- * Created by hadoop on 7/4/16.
- */
 public class MySurfaceView extends SurfaceView {
     private Bitmap bmp;
     private SurfaceHolder holder;
@@ -24,8 +16,6 @@ public class MySurfaceView extends SurfaceView {
     private int width;
     private int height;
     private Paint paint;
-    private Camera camera;
-    boolean previewing = false;
 
     public MySurfaceView(Context context, int leftTopX, int leftTopY, int width, int height) {
         super(context);
@@ -55,7 +45,5 @@ public class MySurfaceView extends SurfaceView {
 
         canvas.drawLine(leftTopX+width,leftTopY+height,leftTopX+width-20,leftTopY+height,paint);
         canvas.drawLine(leftTopX+width,leftTopY+height,leftTopX+width,leftTopY+height-20,paint);
-
-
     }
 }
